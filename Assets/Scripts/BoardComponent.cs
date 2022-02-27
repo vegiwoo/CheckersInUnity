@@ -14,7 +14,7 @@ namespace Checkers
         // Доска
         public const int BOARD_SIZE = 8;
         public GameObject[,] cellCollection = new GameObject[BOARD_SIZE, BOARD_SIZE];
-        private int[,] gameBoardMap = new int[BOARD_SIZE, BOARD_SIZE] {
+        private int[,] initialGameBoardMap = new int[BOARD_SIZE, BOARD_SIZE] {
             { 0, 2, 0, 2, 0, 2, 0, 2 },
             { 2, 0, 2, 0, 2, 0 ,2, 0 },
             { 0, 2, 0, 2, 0, 2 ,0, 2 },
@@ -162,7 +162,8 @@ namespace Checkers
         // Фишки 
         public List<GameObject> checkerCollection = new List<GameObject>(24);
         private Vector3 checkerScale = new Vector3(0.7f, 0.1f, 0.7f);
-        private Vector3 checkerStartTranslate = new Vector3(0f, 0.2f, 0f);
+        /// <summary>Высота, на которую поднимается шашка относительно доски./summary>
+        public Vector3 checkerStartTranslate = new Vector3(0f, 0.2f, 0f);
 
         // Материалы
         private Material blackCellMaterial;
@@ -272,7 +273,7 @@ namespace Checkers
         /// </remark>>
         private void MakeChecker(string cellName, int row, int column, Vector3 position)
         {
-            if (gameBoardMap[row, column] == 0) return;
+            if (initialGameBoardMap[row, column] == 0) return;
 
             GameObject checker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             checker.name = "Checker";
@@ -282,7 +283,7 @@ namespace Checkers
 
             Material checkerMaterial = blackChipMaterial;
 
-            if (gameBoardMap[row, column] == 1)
+            if (initialGameBoardMap[row, column] == 1)
             {
                 checkerMaterial = whiteMaterial;
             }
@@ -291,7 +292,7 @@ namespace Checkers
             CheckerComponent checkerComponent = checker.AddComponent<CheckerComponent>();
             checkerComponent.boardIndex = new BoardIndex(cellName, row, column);
 
-            checkerComponent.playerCode = gameBoardMap[row, column];
+            checkerComponent.playerCode = initialGameBoardMap[row, column];
 
             checkerCollection.Add(checker);
         }

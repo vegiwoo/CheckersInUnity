@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -37,17 +38,25 @@ namespace Checkers
     {
         #region Variables and constants
 
+        private CameraComponent cameraComponent;
+
         /// <summary>Игровая доска с ячейками и шашками.</summary>
         private BoardComponent boardComponent;
         /// <summary>Текущий игрок.</summary>
         private int currentPlayer;
         /// <summary>Материал для выделения сущностей.</summary>
         private Material selectMaterial;
-        /// <summary> Выбранная шашка.</summary>
-        private CheckerComponent selectedChecker;
-        /// <summary> Спискок вариантов ходов для выбранной шашки.</summary>
-        private List<CellComponent> moveOptions = new List<CellComponent>();
-        
+
+        /// <summary> Скорость перемещения шашек.</summary>
+        [SerializeField] private float checkersMovementSpeed;
+        /// <summary> Шашка, выбранная по клику.</summary>
+        private CheckerComponent chosenChecker;
+        /// <summary> Список вариантов ходов для выбранной шашки.</summary>
+        private List<(CellComponent cell, bool isSelectedToMove)> moveOptionsForChosenChecker = new List<(CellComponent, bool)>();
+        /// <summary> Новая позиция для выбранной шашки.</summary>
+        private Vector3 newPositionOfSelectedChecker = Vector3.zero;
+        private Coroutine movingCheckerCoroutine;
+
         #endregion
 
         #region MonoBehaviour methods
@@ -63,6 +72,11 @@ namespace Checkers
             boardComponent.CompletingBoardEvent += CompletingBoardHandler;
 
             currentPlayer = 1;
+
+            checkersMovementSpeed = 0.8f;
+
+            cameraComponent = Camera.main.GetComponent<CameraComponent>();
+            //cameraComponent.target = boardComponent.transform;
         }
 
         #endregion
@@ -72,15 +86,16 @@ namespace Checkers
         /// <summary>Обработчик события завершение формирования доски.</summary>
         /// <param name="sender">Издатель события.</param>
         /// <param name="complete">Флаг окончания формирования игровой доски.</param>
-        /// <remark>Плдписывается на все заинтересованные события.</remark>>
+        /// <remark>Подписывается на все заинтересованные события.</remark>>
         private void CompletingBoardHandler(object sender, bool complete)
         {
-            SetSubscribeToCellEvents();
-            SetSubscribeToCheckerEvents();
+            SetSubscribeToCellEvents(true);
+            SetSubscribeToCheckerEvents(true);
         }
 
         /// <summary> Осуществляет подписку на события ячейки.</summary>
-        private void SetSubscribeToCellEvents()
+        /// <param name="isSubscribe">Флаг подписки (true - подписаться, false - отписаться).</param>
+        private void SetSubscribeToCellEvents(bool isSubscribe)
         {
             foreach (GameObject cellGO in boardComponent.cellCollection)
             {
@@ -88,14 +103,23 @@ namespace Checkers
                 cellGO.TryGetComponent(out cellComponent);
                 if (cellComponent != null & cellComponent.colorComponent == ColorType.Black)
                 {
-                    cellComponent.OnFocusEventHandler += OnFocusedBaseClickComponentHandler;
-                    cellComponent.OnClickEventHandler += OnClickBaseClickComponentHandler;
+                    if (isSubscribe)
+                    {
+                        cellComponent.OnFocusEventHandler += OnFocusedBaseClickComponentHandler;
+                        cellComponent.OnClickEventHandler += OnClickBaseClickComponentHandler;
+                    }
+                    else
+                    {
+                        cellComponent.OnFocusEventHandler -= OnFocusedBaseClickComponentHandler;
+                        cellComponent.OnClickEventHandler -= OnClickBaseClickComponentHandler;
+                    }
                 }
             }
         }
 
         /// <summary> Осуществляет подписку на события шашки.</summary>
-        private void SetSubscribeToCheckerEvents()
+        /// <param name="isSubscribe">Флаг подписки (true - подписаться, false - отписаться).</param>
+        private void SetSubscribeToCheckerEvents(bool isSubscribe)
         {
             foreach (GameObject checkerGO in boardComponent.checkerCollection)
             {
@@ -103,7 +127,10 @@ namespace Checkers
                 checkerGO.TryGetComponent(out checkerComponent);
                 if (checkerComponent != null)
                 {
-                    checkerComponent.OnClickEventHandler += OnClickBaseClickComponentHandler;
+                    if(isSubscribe)
+                        checkerComponent.OnClickEventHandler += OnClickBaseClickComponentHandler;
+                    else
+                        checkerComponent.OnClickEventHandler -= OnClickBaseClickComponentHandler;
                 }
             }
         }
@@ -115,7 +142,11 @@ namespace Checkers
         /// как возможных для перемещения.</remark>
         private void OnFocusedBaseClickComponentHandler(BaseClickComponent component, bool isFocused)
         {
-            if (moveOptions.Contains(component)) return;
+            var targetCell = moveOptionsForChosenChecker
+                    .Where(cell => cell.cell.boardIndex.Index == component.boardIndex.Index)
+                    .FirstOrDefault();
+
+            if (targetCell.cell != null) return;
 
             if (isFocused)
                 AddGameObjectHighlight(component);
@@ -139,7 +170,7 @@ namespace Checkers
                 ClearSelectionFromAllComponents();
 
                 AddGameObjectHighlight(checkerComponent);
-                selectedChecker = checkerComponent;
+                chosenChecker = checkerComponent;
 
                 List<BoardIndex> availableCellIndices = GetAvailableIndexesToMove(component);
 
@@ -152,15 +183,65 @@ namespace Checkers
                     if (cComponent != null)
                     {
                         AddGameObjectHighlight(cComponent);
-                        moveOptions.Add(cComponent);
+                        moveOptionsForChosenChecker.Add((cComponent, false));
                     }
                 }
             }
             // Обработка клика по ячейке
             else if (cellComponent != null & checkerComponent == null)
             {
-                ClearSelectionFromAllComponents();
+                // Поиск ячейки, по которой кликнули, в списке ячеек, доступных для хода выбранной шашки.
+                var targetCell = moveOptionsForChosenChecker
+                    .Where(cell => cell.cell.boardIndex.Index == cellComponent.boardIndex.Index)
+                    .FirstOrDefault();
+
+                if (targetCell.cell != null)
+                {
+                    targetCell.isSelectedToMove = true;
+
+                    Vector3 cellPosition = cellComponent.gameObject.transform.position;
+                    newPositionOfSelectedChecker = new Vector3(cellPosition.x, cellPosition.y + boardComponent.checkerStartTranslate.y, cellPosition.z);
+
+                    // Блокировка пользовательского ввода
+                    SetSubscribeToCellEvents(false);
+                    SetSubscribeToCheckerEvents(false);
+
+                    // Запуск корутины перещения шашки
+                    movingCheckerCoroutine = StartCoroutine(MovingCheckerCoroutine(checkersMovementSpeed, targetCell.cell.boardIndex));
+                }
+                else
+                {
+                    ClearSelectionFromAllComponents();
+                }
             }
+        }
+
+        #endregion
+
+        #region Coroutines
+        /// <summary>Корутина перемещения шашки на новую позицию.</summary>
+        /// <param name="duration">Продолжительность перемещения.</param>
+        /// <param name="targetIndex">Новый BoardIndex для перемещаемой шашки.</param>
+        /// <returns>IEnumerator как результат выполнения корутины.</returns>
+        private IEnumerator MovingCheckerCoroutine(float duration, BoardIndex targetIndex)
+        {
+            float time = 0;
+            Vector3 startPosition = chosenChecker.transform.position;
+
+            while (time < duration && newPositionOfSelectedChecker != Vector3.zero)
+            {
+                chosenChecker.transform.position = Vector3.Lerp(startPosition, newPositionOfSelectedChecker, time / duration);
+                time += Time.deltaTime;
+                yield return null;
+            }
+
+            chosenChecker.transform.position = newPositionOfSelectedChecker;
+
+            movingCheckerCoroutine = null;
+
+            CompletionAndTransferGameMove(targetIndex);
+
+            yield break;
         }
 
         #endregion
@@ -248,11 +329,12 @@ namespace Checkers
             component.IsSelected = false;
         }
 
-        /// <summary> Очищает выделение со всех компонентов.</summary>
+        /// <summary>Очищает выделение со всех компонентов на доске.</summary>
+        /// <remark>Дополнительно удаляет выбранную шашку и ее возможные ходы.</remark>>
         private void ClearSelectionFromAllComponents()
         {
-            selectedChecker = default;
-            moveOptions.Clear();
+            chosenChecker = default;
+            moveOptionsForChosenChecker.Clear();
 
             List<BaseClickComponent> baseClickComponents = new List<BaseClickComponent>();
 
@@ -278,6 +360,22 @@ namespace Checkers
             {
                 RemoveGameObjectHighlight(item);
             }
+        }
+
+        /// <summary> Выполняет операции после завершении хода шашкой.</summary>
+        /// <param name="targetIndex">Новый BoardIndex для перемещаемой шашки.</param>
+        private void CompletionAndTransferGameMove(BoardIndex targetIndex)
+        {
+            newPositionOfSelectedChecker = Vector3.zero;
+
+            chosenChecker.boardIndex = targetIndex;
+
+            ClearSelectionFromAllComponents();
+
+            cameraComponent.MoveHorizontal();
+
+            // Сменить пользователя (запустить корутину перемещения камеры). 
+            // Разблокировать пользовательский ввод (подписаться на события)
         }
 
         /// <summary>Производит смену игрока.</summary>

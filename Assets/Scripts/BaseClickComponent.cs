@@ -21,6 +21,16 @@ namespace Checkers
             this.Name = name;
             this.Index = (row, column);
         }
+
+        public override bool Equals(object obj)
+        {
+            return obj is BoardIndex && ((BoardIndex)obj).Name == Name;
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
     }
 
     public abstract class BaseClickComponent : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
