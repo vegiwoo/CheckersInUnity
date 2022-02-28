@@ -52,7 +52,7 @@ namespace Checkers
         /// <summary> Шашка, выбранная по клику.</summary>
         private CheckerComponent chosenChecker;
         /// <summary> Съеденная шашка.</summary>
-        private CheckerComponent eatenChecker;
+        private (CheckerComponent victim, BoardIndex clickCellIndex) eatenChecker;
         /// <summary> Список вариантов ходов для выбранной шашки.</summary>
         private List<(CellComponent cell, bool isSelectedToMove)> moveOptionsForChosenChecker = new List<(CellComponent, bool)>();
         /// <summary> Новая позиция для выбранной шашки.</summary>
@@ -228,6 +228,11 @@ namespace Checkers
         /// <returns>IEnumerator как результат выполнения корутины.</returns>
         private IEnumerator MovingCheckerCoroutine(float duration, BoardIndex targetIndex)
         {
+            if (eatenChecker.clickCellIndex.Index == targetIndex.Index)
+            {
+                RemoveChecker(eatenChecker.victim.boardIndex);
+            }
+
             float time = 0;
             Vector3 startPosition = chosenChecker.transform.position;
 
@@ -325,7 +330,9 @@ namespace Checkers
 
                                 if (hindrance02 == null)
                                 {
-                                    eatenChecker = CheckingCheckerOnCell(nextNode.Value);
+                                    eatenChecker.victim = CheckingCheckerOnCell(nextNode.Value);
+                                    eatenChecker.clickCellIndex = fightNode.Value;
+
                                     availableCellIndices.Add(fightNode.Value);
                                 }
                             }
@@ -438,17 +445,19 @@ namespace Checkers
 
             chosenChecker.boardIndex = targetIndex;
 
-            // Проверка условия победы
-            // - если целевая шашка - дамка
+            // Проверка условия победы  - если целевая шашка дамка или у оппонента занончились фигуры
+            int opponentCheckersCount = 12;
             switch (chosenChecker.colorComponent)
             {
                 case ColorType.White:
+                    opponentCheckersCount = boardComponent.CheckersCountByColor(ColorType.Black);
                     if (chosenChecker.boardIndex.Index.row == 0)
                     {
                         chosenChecker.isLady = true;
                     }
                     break;
                 case ColorType.Black:
+                    opponentCheckersCount = boardComponent.CheckersCountByColor(ColorType.White);
                     if (chosenChecker.boardIndex.Index.row == 7)
                     {
                         chosenChecker.isLady = true;
@@ -457,23 +466,14 @@ namespace Checkers
                 default:
                     break;
             }
-            
 
-            if (chosenChecker.isLady)
+            if (chosenChecker.isLady || opponentCheckersCount == 0)
             {
                 string side = chosenChecker.colorComponent == ColorType.White ? "Белые" : "Черные";
 
                 print($"{side} победили!");
                 UnityEditor.EditorApplication.isPaused = true;
             }
-
-            if (eatenChecker != null)
-            {
-                RemoveChecker(eatenChecker.boardIndex);
-            }
-
-            // - если у противника не осталось шашек
-            // ...
 
             ClearSelectionFromAllComponents();
 

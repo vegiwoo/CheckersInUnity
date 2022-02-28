@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExtensionMethods;
 using UnityEngine;
 
@@ -298,6 +299,17 @@ namespace Checkers
             }
 
             checkerCollection.Add(checker);
+        }
+
+        /// <summary>Возвращает количетво шашек из коллекции игровых объектов по заданному цвету. </summary>
+        /// <param name="colorType">Заданный цвет для поиска.</param>
+        /// <returns>Количество найденных шашек.</returns>
+        public int CheckersCountByColor(ColorType colorType)
+        {
+            return checkerCollection
+                .Select(ch => ch.GetComponent<CheckerComponent>())
+                .Where(ch => ch.colorComponent == colorType)
+                .Count();
         }
         #endregion
     }
