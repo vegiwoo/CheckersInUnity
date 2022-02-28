@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 namespace Checkers
 {
     /// <summary> Перечисление, определяющее цвета ячеек и шашек.</summary>
-    public enum ColorType { White, Black }
+    public enum ColorType { White = 1, Black = 2 }
 
     /// <summary> Сущность для фиксации расположения игрового элемента в границах игровой доски.</summary>
     public struct BoardIndex
@@ -98,10 +98,6 @@ namespace Checkers
         {
             OnClickEventHandler?.Invoke(this);
         }
-
-        #endregion
-
-        #region Methods
 
         #endregion
     }

@@ -281,18 +281,21 @@ namespace Checkers
             checker.transform.position = position;
             checker.transform.Translate(checkerStartTranslate);
 
-            Material checkerMaterial = blackChipMaterial;
-
-            if (initialGameBoardMap[row, column] == 1)
-            {
-                checkerMaterial = whiteMaterial;
-            }
-
-            checker.GetComponent<Renderer>().materials = new Material[] { checkerMaterial };
             CheckerComponent checkerComponent = checker.AddComponent<CheckerComponent>();
             checkerComponent.boardIndex = new BoardIndex(cellName, row, column);
 
-            checkerComponent.playerCode = initialGameBoardMap[row, column];
+            if (initialGameBoardMap[row, column] == 1)
+            {
+                checkerComponent.colorComponent = ColorType.White;
+                checker.GetComponent<Renderer>().materials = new Material[] { whiteMaterial };
+                checkerComponent.playerCode = 1;
+            }
+            else if(initialGameBoardMap[row, column] == 2)
+            {
+                checkerComponent.colorComponent = ColorType.Black;
+                checker.GetComponent<Renderer>().materials = new Material[] { blackChipMaterial };
+                checkerComponent.playerCode = 2;
+            }
 
             checkerCollection.Add(checker);
         }

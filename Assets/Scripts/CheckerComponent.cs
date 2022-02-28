@@ -4,10 +4,10 @@ namespace Checkers
 {
     public class CheckerComponent : BaseClickComponent
     {
-        // Код игрока
+        /// <summary>Код игрока и цвета шашки</summary>
         public int playerCode = 0;
 
-        // Является ли шашка дамкой
+        /// <summary>Является ли шашка дамкой.</summary>
         public bool isLady = false;
     }
 }

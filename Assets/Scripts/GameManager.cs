@@ -51,6 +51,8 @@ namespace Checkers
         [SerializeField] private float checkersMovementSpeed;
         /// <summary> Шашка, выбранная по клику.</summary>
         private CheckerComponent chosenChecker;
+        /// <summary> Съеденная шашка.</summary>
+        private CheckerComponent eatenChecker;
         /// <summary> Список вариантов ходов для выбранной шашки.</summary>
         private List<(CellComponent cell, bool isSelectedToMove)> moveOptionsForChosenChecker = new List<(CellComponent, bool)>();
         /// <summary> Новая позиция для выбранной шашки.</summary>
@@ -191,7 +193,7 @@ namespace Checkers
             // Обработка клика по ячейке
             else if (cellComponent != null & checkerComponent == null)
             {
-                // Поиск ячейки, по которой кликнули, в списке ячеек, доступных для хода выбранной шашки.
+                // Поиск ячейки, по которой кликнули в списке ячеек, доступных для хода выбранной шашки.
                 var targetCell = moveOptionsForChosenChecker
                     .Where(cell => cell.cell.boardIndex.Index == cellComponent.boardIndex.Index)
                     .FirstOrDefault();
@@ -259,7 +261,7 @@ namespace Checkers
                 .ToList();
         }
 
-        /// <summary>Получает список элементов BoardIndex, доступных для хода текущей шашки.</summary>
+        /// <summary>Получает список элементов BoardIndex, доступных для хода или боя текущей шашки.</summary>
         /// <param name="component">Компонент текущей шашки.</param>
         /// <returns>Список доступных BoardIndex.</returns>
         private List<BoardIndex> GetAvailableIndexesToMove(BaseClickComponent component)
@@ -289,38 +291,43 @@ namespace Checkers
                         break;
                 }
 
-                CheckerComponent hindrance01 = default;
-                hindrance01 = CheckingCheckerOnCell(nextNode.Value);
+                CheckerComponent checkerOnNextCell;
 
-                if (nextNode != null && hindrance01 == null)
+                if (nextNode != null)
                 {
-                    availableCellIndices.Add(nextNode.Value);
-                }
-                else if (nextNode != null && hindrance01 != null)
-                {
-                    if ((int)hindrance01.colorComponent != currentPlayer)
+                    checkerOnNextCell = CheckingCheckerOnCell(nextNode.Value);
+
+                    if (checkerOnNextCell == null)
                     {
-                        LinkedListNode<BoardIndex> fightNode = default;
-
-                        switch (currentPlayer)
+                        availableCellIndices.Add(nextNode.Value);
+                    }
+                    else
+                    {
+                        if ((int)checkerOnNextCell.colorComponent != currentPlayer)
                         {
-                            case 1:
-                                fightNode = nextNode.Next;
-                                break;
-                            case 2:
-                                fightNode = nextNode.Previous;
-                                break;
-                            default:
-                                break;
-                        }
+                            LinkedListNode<BoardIndex> fightNode = default;
 
-                        if(fightNode != null)
-                        {
-                            CheckerComponent hindrance02 = CheckingCheckerOnCell(fightNode.Value);
-
-                            if (hindrance02 == null)
+                            switch (currentPlayer)
                             {
-                                availableCellIndices.Add(fightNode.Value);
+                                case 1:
+                                    fightNode = nextNode.Next;
+                                    break;
+                                case 2:
+                                    fightNode = nextNode.Previous;
+                                    break;
+                                default:
+                                    break;
+                            }
+
+                            if (fightNode != null)
+                            {
+                                CheckerComponent hindrance02 = CheckingCheckerOnCell(fightNode.Value);
+
+                                if (hindrance02 == null)
+                                {
+                                    eatenChecker = CheckingCheckerOnCell(nextNode.Value);
+                                    availableCellIndices.Add(fightNode.Value);
+                                }
                             }
                         }
                     }
@@ -328,7 +335,6 @@ namespace Checkers
             }
             return availableCellIndices;
         }
-
 
         /// <summary> Находит компонент шашки для по указанному индексу.</summary>
         /// <param name="boardIndex">Указанный индекс для поиска.</param>
@@ -339,6 +345,26 @@ namespace Checkers
                 .Select(go => go.GetComponent<CheckerComponent>())
                 .Where(ch => ch.boardIndex.Name == boardIndex.Name)
                 .FirstOrDefault();
+        }
+
+        /// <summary>Удаляет шашку с игрового поля для по указанному индексу.</summary>
+        /// <param name="boardIndex">Указанный индекс для поиска.</param>
+        /// <returns>Булев флаг выполнения операции.</returns>
+        private bool RemoveChecker(BoardIndex boardIndex)
+        {
+            CheckerComponent checkerComponent = CheckingCheckerOnCell(boardIndex);
+
+            if (checkerComponent != null)
+            {
+                boardComponent.checkerCollection.Remove(checkerComponent.gameObject);
+                Destroy(checkerComponent.gameObject);
+                eatenChecker = default;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         /// <summary>Добавляет выделение игровому объекту.</summary>
@@ -400,6 +426,7 @@ namespace Checkers
             foreach (var item in baseClickComponents)
             {
                 RemoveGameObjectHighlight(item);
+                eatenChecker = default;
             }
         }
 
@@ -410,6 +437,43 @@ namespace Checkers
             newPositionOfSelectedChecker = Vector3.zero;
 
             chosenChecker.boardIndex = targetIndex;
+
+            // Проверка условия победы
+            // - если целевая шашка - дамка
+            switch (chosenChecker.colorComponent)
+            {
+                case ColorType.White:
+                    if (chosenChecker.boardIndex.Index.row == 0)
+                    {
+                        chosenChecker.isLady = true;
+                    }
+                    break;
+                case ColorType.Black:
+                    if (chosenChecker.boardIndex.Index.row == 7)
+                    {
+                        chosenChecker.isLady = true;
+                    }
+                    break;
+                default:
+                    break;
+            }
+            
+
+            if (chosenChecker.isLady)
+            {
+                string side = chosenChecker.colorComponent == ColorType.White ? "Белые" : "Черные";
+
+                print($"{side} победили!");
+                UnityEditor.EditorApplication.isPaused = true;
+            }
+
+            if (eatenChecker != null)
+            {
+                RemoveChecker(eatenChecker.boardIndex);
+            }
+
+            // - если у противника не осталось шашек
+            // ...
 
             ClearSelectionFromAllComponents();
 
