@@ -76,7 +76,7 @@ namespace Checkers
             checkersMovementSpeed = 0.8f;
 
             cameraComponent = Camera.main.GetComponent<CameraComponent>();
-            //cameraComponent.target = boardComponent.transform;
+            cameraComponent.CameraRotationComplete += CompletingBoardHandler;
         }
 
         #endregion
@@ -269,16 +269,22 @@ namespace Checkers
 
             foreach (var boardIndicesLinkedList in boardIndicesList)
             {
+
                 // Находим целевую ноду в конкретной диагонали
                 LinkedListNode<BoardIndex> targetNode = boardIndicesLinkedList
                     .Find(component.boardIndex);
 
-                //// Находим предыдущую ноду относительно целевой
-                //LinkedListNode<BoardIndex> previousNode = targetNode.Previous;
-                //if (previousNode != null) availableCellIndices.Add(previousNode.Value);
+                /// Находим предыдущую ноду относительно целевой
+                LinkedListNode<BoardIndex> nextNode = default;
 
-                // Находим следующую ноду относительно целевой
-                LinkedListNode<BoardIndex> nextNode = targetNode.Next;
+                if(currentPlayer == 1)
+                {
+                    nextNode = targetNode.Next;
+                }
+                else if (currentPlayer == 2)
+                {
+                    nextNode = targetNode.Previous;
+                }
 
                 if (nextNode != null && CheckingCheckerOnCell(nextNode.Value) == null)
                 {
@@ -372,10 +378,9 @@ namespace Checkers
 
             ClearSelectionFromAllComponents();
 
-            cameraComponent.MoveHorizontal();
+            SwitchPlayer();
 
-            // Сменить пользователя (запустить корутину перемещения камеры). 
-            // Разблокировать пользовательский ввод (подписаться на события)
+            cameraComponent.MoveHorizontal(1.0f, currentPlayer == 1 ? ColorType.White : ColorType.Black);
         }
 
         /// <summary>Производит смену игрока.</summary>
