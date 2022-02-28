@@ -3,34 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.EventSystems;
-
-// Подписывается на все события ячеек и шашек, их родителя
-// Запрещает ходить более одного раза одной стороне, предупреждет в консоли
-
-// Заданные условия победы
-// - простые - первая шашка проходит в дамки или съедены все фишки противника
-// - традиционные - съедены все фишки противника
-
-// Условия перемещения
-// Общие
-// - при наведении курсора на клетку она подсвечивается, при перемещении теряет подсветку
-// - при выборе фишки нужно подсветить на какие она может перемещаться
-// - выбранная шашка подсвечивается
-// - шашка перемещается только на пустую клетку
-// - шашка перемещается только вперед
-// - шашка перемещается только по черным клеткам и только на 1 клетку
-
-// Условия боя
-// - при уничтожеии шашки противника текущая шашка встает за ней
-
-// Передаа хода
-// - ввод блокируется
-// - камера через корутину плавно перемещается на другую сторону
-
-// Не может содержать публичные методы
-// Перемещение фишек - плавно и через корутину
-// Во время перемещения пользовательский ввод блокируется
 
 namespace Checkers
 {
@@ -99,7 +71,7 @@ namespace Checkers
         /// <param name="isSubscribe">Флаг подписки (true - подписаться, false - отписаться).</param>
         private void SetSubscribeToCellEvents(bool isSubscribe)
         {
-            foreach (GameObject cellGO in boardComponent.cellCollection)
+            foreach (GameObject cellGO in boardComponent.CellCollection)
             {
                 CellComponent cellComponent;
                 cellGO.TryGetComponent(out cellComponent);
@@ -123,7 +95,7 @@ namespace Checkers
         /// <param name="isSubscribe">Флаг подписки (true - подписаться, false - отписаться).</param>
         private void SetSubscribeToCheckerEvents(bool isSubscribe)
         {
-            foreach (GameObject checkerGO in boardComponent.checkerCollection)
+            foreach (GameObject checkerGO in boardComponent.CheckerCollection)
             {
                 CheckerComponent checkerComponent;
                 checkerGO.TryGetComponent(out checkerComponent);
@@ -179,7 +151,7 @@ namespace Checkers
 
                 foreach (var boardIndex in availableCellIndices)
                 {
-                    GameObject gameObject = boardComponent.cellCollection[boardIndex.Index.row, boardIndex.Index.column];
+                    GameObject gameObject = boardComponent.CellCollection[boardIndex.Index.row, boardIndex.Index.column];
 
                     CellComponent cComponent;
                     gameObject.TryGetComponent(out cComponent);
@@ -261,7 +233,7 @@ namespace Checkers
         /// <returns>Возвращает список связанных списков диаоналей игровой доски, имеющие отношение к исходному BoardIndex.</returns>
         private List<LinkedList<BoardIndex>> GetDiagonalsForCheckers(BoardIndex boardIndex)
         {
-            return boardComponent.boardDiagonals
+            return boardComponent.BoardDiagonals
                 .Where(list => list.Contains(boardIndex))
                 .ToList();
         }
@@ -348,7 +320,7 @@ namespace Checkers
         /// <returns>Найденный компонент шашаки или null</returns>
         private CheckerComponent CheckingCheckerOnCell(BoardIndex boardIndex)
         {
-            return boardComponent.checkerCollection
+            return boardComponent.CheckerCollection
                 .Select(go => go.GetComponent<CheckerComponent>())
                 .Where(ch => ch.boardIndex.Name == boardIndex.Name)
                 .FirstOrDefault();
@@ -363,7 +335,7 @@ namespace Checkers
 
             if (checkerComponent != null)
             {
-                boardComponent.checkerCollection.Remove(checkerComponent.gameObject);
+                boardComponent.CheckerCollection.Remove(checkerComponent.gameObject);
                 Destroy(checkerComponent.gameObject);
                 eatenChecker = default;
                 return true;
@@ -414,16 +386,16 @@ namespace Checkers
 
             List<CellComponent> cellComponentsa =
                 (
-                    from i in Enumerable.Range(0, boardComponent.cellCollection.GetLength(0))
-                    from j in Enumerable.Range(0, boardComponent.cellCollection.GetLength(1))
-                    select (boardComponent.cellCollection[i, j].GetComponent<CellComponent>())
+                    from i in Enumerable.Range(0, boardComponent.CellCollection.GetLength(0))
+                    from j in Enumerable.Range(0, boardComponent.CellCollection.GetLength(1))
+                    select (boardComponent.CellCollection[i, j].GetComponent<CellComponent>())
                 )
                 .Where(comp => comp.IsSelected)
                 .ToList();
 
             baseClickComponents.AddRange(cellComponentsa);
 
-            List<CheckerComponent> checkerComponents = boardComponent.checkerCollection
+            List<CheckerComponent> checkerComponents = boardComponent.CheckerCollection
                 .Select(ch => ch.GetComponent<CheckerComponent>())
                 .Where(cc => cc.IsSelected)
                 .ToList();

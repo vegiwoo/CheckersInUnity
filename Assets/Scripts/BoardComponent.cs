@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExtensionMethods;
+using Unity.Jobs;
 using UnityEngine;
 
 namespace Checkers
@@ -14,20 +15,65 @@ namespace Checkers
 
         // Доска
         public const int BOARD_SIZE = 8;
-        public GameObject[,] cellCollection = new GameObject[BOARD_SIZE, BOARD_SIZE];
-        private int[,] initialGameBoardMap = new int[BOARD_SIZE, BOARD_SIZE] {
-            { 0, 2, 0, 2, 0, 2, 0, 2 },
-            { 2, 0, 2, 0, 2, 0 ,2, 0 },
-            { 0, 2, 0, 2, 0, 2 ,0, 2 },
-            { 0, 0, 0, 0, 0, 0 ,0 ,0 },
-            { 0, 0, 0, 0, 0, 0, 0, 0 },
-            { 1, 0, 1, 0, 1, 0, 1, 0 },
-            { 0, 1, 0, 1, 0, 1, 0, 1 },
-            { 1, 0, 1, 0, 1, 0, 1, 0 }
-        };
+        public GameObject[,] CellCollection { get; private set; }
+        private int[,] InitialGameBoardMap { get; set; }
 
         /// <summary>Коллекция коллекций диагоналей на доске (черные диагонали для шашек).</summary>
-        public List<LinkedList<BoardIndex>> boardDiagonals = new List<LinkedList<BoardIndex>>(11)
+        public List<LinkedList<BoardIndex>> BoardDiagonals { get; private set; }
+
+        // Ячейки
+        private Vector3 cellSize = new Vector3(1.0f, 0.2f, 1.0f);
+
+        // Фишки 
+        public List<GameObject> CheckerCollection { get; private set; }
+        private Vector3 checkerScale = new Vector3(0.7f, 0.1f, 0.7f);
+        /// <summary>Высота, на которую поднимается шашка относительно доски./summary>
+        public Vector3 checkerStartTranslate = new Vector3(0f, 0.2f, 0f);
+
+        // Материалы
+        private Material blackCellMaterial;
+        private Material blackChipMaterial;
+        private Material whiteMaterial;
+
+        #endregion
+
+        #region MonoBehaviour methods
+
+        private void Awake()
+        {
+            blackCellMaterial = (Material)Resources.Load("Materials/BlackCellMaterial", typeof(Material));
+            blackChipMaterial = (Material)Resources.Load("Materials/BlackChipMaterial", typeof(Material));
+            whiteMaterial = (Material)Resources.Load("Materials/WhiteMaterial", typeof(Material));
+        }
+
+        private void Start()
+        {
+
+            InitializeCollcections();
+            InitializeBoard();
+        }
+        #endregion
+
+        #region Methods
+
+        private void InitializeCollcections()
+        {
+            CellCollection = new GameObject[BOARD_SIZE, BOARD_SIZE];
+
+            CheckerCollection = new List<GameObject>(24);
+
+            InitialGameBoardMap = new int[BOARD_SIZE, BOARD_SIZE] {
+                { 0, 2, 0, 2, 0, 2, 0, 2 },
+                { 2, 0, 2, 0, 2, 0 ,2, 0 },
+                { 0, 2, 0, 2, 0, 2 ,0, 2 },
+                { 0, 0, 0, 0, 0, 0 ,0 ,0 },
+                { 0, 0, 0, 0, 0, 0, 0, 0 },
+                { 1, 0, 1, 0, 1, 0, 1, 0 },
+                { 0, 1, 0, 1, 0, 1, 0, 1 },
+                { 1, 0, 1, 0, 1, 0, 1, 0 }
+            };
+
+            BoardDiagonals = new List<LinkedList<BoardIndex>>(11)
         {
             // goldWay 
             new List<BoardIndex>(8)
@@ -156,39 +202,7 @@ namespace Checkers
                 new BoardIndex("H2", 6, 7)
             }.ToLinkedList(),
         };
-
-        // Ячейки
-        private Vector3 cellSize = new Vector3(1.0f, 0.2f, 1.0f);
-
-        // Фишки 
-        public List<GameObject> checkerCollection = new List<GameObject>(24);
-        private Vector3 checkerScale = new Vector3(0.7f, 0.1f, 0.7f);
-        /// <summary>Высота, на которую поднимается шашка относительно доски./summary>
-        public Vector3 checkerStartTranslate = new Vector3(0f, 0.2f, 0f);
-
-        // Материалы
-        private Material blackCellMaterial;
-        private Material blackChipMaterial;
-        private Material whiteMaterial;
-
-        #endregion
-
-        #region MonoBehaviour methods
-
-        private void Awake()
-        {
-            blackCellMaterial = (Material)Resources.Load("Materials/BlackCellMaterial", typeof(Material));
-            blackChipMaterial = (Material)Resources.Load("Materials/BlackChipMaterial", typeof(Material));
-            whiteMaterial = (Material)Resources.Load("Materials/WhiteMaterial", typeof(Material));
         }
-
-        private void Start()
-        {
-            InitializeBoard();
-        }
-        #endregion
-
-        #region Methods
 
         /// <summary> Инициализирует игровую доску </summary>
         /// <remark>
@@ -224,7 +238,7 @@ namespace Checkers
                         }
                         else
                         {
-                            GameObject cellOnRight = cellCollection[row, column - 1];
+                            GameObject cellOnRight = CellCollection[row, column - 1];
                             position = new Vector3(cellOnRight.transform.position.x + 1, cellOnRight.transform.position.y, cellOnRight.transform.position.z);
                             if (cellOnRight.GetComponent<Renderer>().material.color == whiteMaterial.color)
                             {
@@ -235,7 +249,7 @@ namespace Checkers
                     }
                     else
                     {
-                        GameObject topCell = (cellCollection[row - 1, column]);
+                        GameObject topCell = (CellCollection[row - 1, column]);
                         position = new Vector3(topCell.transform.position.x, topCell.transform.position.y, topCell.transform.position.z - 1);
                         if (topCell.GetComponent<Renderer>().material.color == whiteMaterial.color)
                         {
@@ -248,7 +262,7 @@ namespace Checkers
                     cell.GetComponent<Renderer>().materials = new Material[] { cellMaterial };
                     cell.transform.parent = transform;
 
-                    cellCollection[row, column] = cell;
+                    CellCollection[row, column] = cell;
 
                     MakeChecker(cell.name, row, column, position);
 
@@ -274,7 +288,7 @@ namespace Checkers
         /// </remark>>
         private void MakeChecker(string cellName, int row, int column, Vector3 position)
         {
-            if (initialGameBoardMap[row, column] == 0) return;
+            if (InitialGameBoardMap[row, column] == 0) return;
 
             GameObject checker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             checker.name = "Checker";
@@ -285,28 +299,28 @@ namespace Checkers
             CheckerComponent checkerComponent = checker.AddComponent<CheckerComponent>();
             checkerComponent.boardIndex = new BoardIndex(cellName, row, column);
 
-            if (initialGameBoardMap[row, column] == 1)
+            if (InitialGameBoardMap[row, column] == 1)
             {
                 checkerComponent.colorComponent = ColorType.White;
                 checker.GetComponent<Renderer>().materials = new Material[] { whiteMaterial };
                 checkerComponent.playerCode = 1;
             }
-            else if(initialGameBoardMap[row, column] == 2)
+            else if(InitialGameBoardMap[row, column] == 2)
             {
                 checkerComponent.colorComponent = ColorType.Black;
                 checker.GetComponent<Renderer>().materials = new Material[] { blackChipMaterial };
                 checkerComponent.playerCode = 2;
             }
 
-            checkerCollection.Add(checker);
+            CheckerCollection.Add(checker);
         }
 
-        /// <summary>Возвращает количетво шашек из коллекции игровых объектов по заданному цвету. </summary>
+        /// <summary>Возвращает количетво шашек из коллекции игровых объектов по заданному цвету.</summary>
         /// <param name="colorType">Заданный цвет для поиска.</param>
         /// <returns>Количество найденных шашек.</returns>
         public int CheckersCountByColor(ColorType colorType)
         {
-            return checkerCollection
+            return CheckerCollection
                 .Select(ch => ch.GetComponent<CheckerComponent>())
                 .Where(ch => ch.colorComponent == colorType)
                 .Count();
