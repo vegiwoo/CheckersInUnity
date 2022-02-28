@@ -87,10 +87,10 @@ public class CameraComponent : MonoBehaviour
             switch (colorType)
             {
                 case ColorType.White:
-                    camRotateCompensation = Vector3.Lerp(transform.eulerAngles, new Vector3(45f, 0f, 0f), 1);
+                    camRotateCompensation = Vector3.Lerp(transform.eulerAngles, new Vector3(40f, 0f, 0f), 1);
                     break;
                 case ColorType.Black:
-                    camRotateCompensation = Vector3.Lerp(transform.eulerAngles, new Vector3(45f, -180f, 0f), 1);
+                    camRotateCompensation = Vector3.Lerp(transform.eulerAngles, new Vector3(40f, -180f, 0f), 1);
                     break;
             }
 

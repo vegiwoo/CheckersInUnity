@@ -172,6 +172,7 @@ namespace Checkers
                 AddGameObjectHighlight(checkerComponent);
                 chosenChecker = checkerComponent;
 
+                // Поиск ячеек для хода
                 List<BoardIndex> availableCellIndices = GetAvailableIndexesToMove(component);
 
                 foreach (var boardIndex in availableCellIndices)
@@ -264,36 +265,70 @@ namespace Checkers
         private List<BoardIndex> GetAvailableIndexesToMove(BaseClickComponent component)
         {
             List<LinkedList<BoardIndex>> boardIndicesList = GetDiagonalsForCheckers(component.boardIndex);
-
             List<BoardIndex> availableCellIndices = new List<BoardIndex>();
 
             foreach (var boardIndicesLinkedList in boardIndicesList)
             {
-
                 // Находим целевую ноду в конкретной диагонали
                 LinkedListNode<BoardIndex> targetNode = boardIndicesLinkedList
                     .Find(component.boardIndex);
 
-                /// Находим предыдущую ноду относительно целевой
                 LinkedListNode<BoardIndex> nextNode = default;
 
-                if(currentPlayer == 1)
+                switch (currentPlayer)
                 {
-                    nextNode = targetNode.Next;
-                }
-                else if (currentPlayer == 2)
-                {
-                    nextNode = targetNode.Previous;
+                    case 1:
+                        /// Находим предыдущую ноду относительно целевой
+                        nextNode = targetNode.Next;
+                        break;
+                    case 2:
+                        /// Находим следующую ноду относительно целевой
+                        nextNode = targetNode.Previous;
+                        break;
+                    default:
+                        break;
                 }
 
-                if (nextNode != null && CheckingCheckerOnCell(nextNode.Value) == null)
+                CheckerComponent hindrance01 = default;
+                hindrance01 = CheckingCheckerOnCell(nextNode.Value);
+
+                if (nextNode != null && hindrance01 == null)
                 {
                     availableCellIndices.Add(nextNode.Value);
                 }
-            }
+                else if (nextNode != null && hindrance01 != null)
+                {
+                    if ((int)hindrance01.colorComponent != currentPlayer)
+                    {
+                        LinkedListNode<BoardIndex> fightNode = default;
 
+                        switch (currentPlayer)
+                        {
+                            case 1:
+                                fightNode = nextNode.Next;
+                                break;
+                            case 2:
+                                fightNode = nextNode.Previous;
+                                break;
+                            default:
+                                break;
+                        }
+
+                        if(fightNode != null)
+                        {
+                            CheckerComponent hindrance02 = CheckingCheckerOnCell(fightNode.Value);
+
+                            if (hindrance02 == null)
+                            {
+                                availableCellIndices.Add(fightNode.Value);
+                            }
+                        }
+                    }
+                }
+            }
             return availableCellIndices;
         }
+
 
         /// <summary> Находит компонент шашки для по указанному индексу.</summary>
         /// <param name="boardIndex">Указанный индекс для поиска.</param>
