@@ -3,10 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Checkers.Interfaces;
+using Checkers.Helpers;
 
-namespace Checkers
+namespace Checkers.Managers
 {
-    public class GameManager : MonoBehaviour
+    public class GameManager : MonoBehaviour, ISubject
     {
         #region Variables and constants
 
@@ -16,6 +18,9 @@ namespace Checkers
         private BoardComponent boardComponent;
         /// <summary>Текущий игрок.</summary>
         private int currentPlayer;
+
+        [SerializeField] private CheckersPartyMode partyMode = CheckersPartyMode.Simple;
+
         /// <summary>Материал для выделения сущностей.</summary>
         private Material selectMaterial;
 
@@ -30,6 +35,21 @@ namespace Checkers
         /// <summary> Новая позиция для выбранной шашки.</summary>
         private Vector3 newPositionOfSelectedChecker = Vector3.zero;
         private Coroutine movingCheckerCoroutine;
+
+        /// <summary>Список подписчиков.</summary>
+        private List<IObserver> observers = new List<IObserver>();
+        /// <summary>Текущий игровой ход.</summary>
+        private Nullable<PlayStep> currentPlayStep {
+            get => currentPlayStep;
+            set
+            {
+                currentPlayStep = value;
+                if (currentPlayStep != null && observers.Count() > 0)
+                {
+                    Notify();
+                }
+            }
+        }
 
         #endregion
 
@@ -222,6 +242,34 @@ namespace Checkers
             CompletionAndTransferGameMove(targetIndex);
 
             yield break;
+        }
+
+        #endregion
+
+        #region Subject methods
+
+        public void Attach(IObserver observer)
+        {
+            observers.Add(observer);
+        }
+
+        public void Detach(IObserver observer)
+        {
+            observers.Remove(observer);
+        }
+
+        public void Notify()
+        {
+            PlayStep? playStep = currentPlayStep.GetValueOrDefault();
+
+            if (playStep != null)
+            {
+                foreach (var observer in observers)
+                {
+                    observer.Update((PlayStep)playStep);
+                }
+            }
+            currentPlayStep = null;
         }
 
         #endregion
@@ -463,3 +511,9 @@ namespace Checkers
         #endregion
     }
 }
+
+// Новый компонент:
+// 
+// - воспроиводит записанную партию по выбору в редакторе, пользовательский ввод выклчается, задержка между ходами, лог кажого хода
+// - в редакторе выбиратся флажок записи игры / флажок для воспроизведения записанной игры 
+// - запись после каждого хода
