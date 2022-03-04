@@ -18,7 +18,7 @@ namespace Checkers.Managers
         private BoardComponent boardComponent;
         /// <summary>Текущий игрок.</summary>
         private int currentPlayer;
-
+        /// <summary>Режим игровой партии.</summary>
         [SerializeField] private CheckersPartyMode partyMode = CheckersPartyMode.Simple;
 
         /// <summary>Материал для выделения сущностей.</summary>
@@ -28,6 +28,7 @@ namespace Checkers.Managers
         [SerializeField] private float checkersMovementSpeed;
         /// <summary> Шашка, выбранная по клику.</summary>
         private CheckerComponent chosenChecker;
+        private CheckerComponent ChosenChecker;
         /// <summary> Съеденная шашка.</summary>
         private (CheckerComponent victim, BoardIndex clickCellIndex) eatenChecker;
         /// <summary> Список вариантов ходов для выбранной шашки.</summary>
@@ -39,15 +40,13 @@ namespace Checkers.Managers
         /// <summary>Список подписчиков.</summary>
         private List<IObserver> observers = new List<IObserver>();
         /// <summary>Текущий игровой ход.</summary>
-        private Nullable<PlayStep> currentPlayStep {
+        private PlayStep? currentPlayStep;
+        private PlayStep? CurrentPlayStep {
             get => currentPlayStep;
             set
             {
                 currentPlayStep = value;
-                if (currentPlayStep != null && observers.Count() > 0)
-                {
-                    Notify();
-                }
+                if (currentPlayStep != null && observers.Count() > 0) Notify();
             }
         }
 
@@ -164,7 +163,14 @@ namespace Checkers.Managers
                 ClearSelectionFromAllComponents();
 
                 AddGameObjectHighlight(checkerComponent);
-                chosenChecker = checkerComponent;
+                ChosenChecker = checkerComponent;
+
+                //// Точка записи партии
+                if (partyMode == CheckersPartyMode.Record)
+                {                                                    
+                     PlayStep step = new PlayStep(currentPlayer, "checker", ChosenChecker.boardIndex.Name, ActorActionType.Select);
+                     SetCurrentPlayStep(step);
+                }
 
                 // Поиск ячеек для хода
                 List<BoardIndex> availableCellIndices = GetAvailableIndexesToMove(component);
@@ -201,6 +207,12 @@ namespace Checkers.Managers
                     SetSubscribeToCellEvents(false);
                     SetSubscribeToCheckerEvents(false);
 
+                    if (partyMode == CheckersPartyMode.Record)
+                    {
+                        PlayStep movePlayStep = new PlayStep(currentPlayer, "checker", ChosenChecker.boardIndex.Name, ActorActionType.Move, targetCell.cell.boardIndex.Name);
+                        SetCurrentPlayStep(movePlayStep);
+                    }
+
                     // Запуск корутины перещения шашки
                     movingCheckerCoroutine = StartCoroutine(MovingCheckerCoroutine(checkersMovementSpeed, targetCell.cell.boardIndex));
                 }
@@ -226,16 +238,16 @@ namespace Checkers.Managers
             }
 
             float time = 0;
-            Vector3 startPosition = chosenChecker.transform.position;
+            Vector3 startPosition = ChosenChecker.transform.position;
 
             while (time < duration && newPositionOfSelectedChecker != Vector3.zero)
             {
-                chosenChecker.transform.position = Vector3.Lerp(startPosition, newPositionOfSelectedChecker, time / duration);
+                ChosenChecker.transform.position = Vector3.Lerp(startPosition, newPositionOfSelectedChecker, time / duration);
                 time += Time.deltaTime;
                 yield return null;
             }
 
-            chosenChecker.transform.position = newPositionOfSelectedChecker;
+            ChosenChecker.transform.position = newPositionOfSelectedChecker;
 
             movingCheckerCoroutine = null;
 
@@ -260,7 +272,7 @@ namespace Checkers.Managers
 
         public void Notify()
         {
-            PlayStep? playStep = currentPlayStep.GetValueOrDefault();
+            PlayStep? playStep = CurrentPlayStep.GetValueOrDefault();
 
             if (playStep != null)
             {
@@ -269,7 +281,7 @@ namespace Checkers.Managers
                     observer.Update((PlayStep)playStep);
                 }
             }
-            currentPlayStep = null;
+            CurrentPlayStep = null;
         }
 
         #endregion
@@ -383,6 +395,13 @@ namespace Checkers.Managers
 
             if (checkerComponent != null)
             {
+                // Точка записи партии
+                if (partyMode == CheckersPartyMode.Record)
+                {
+                    PlayStep playStep = new PlayStep(currentPlayer, ActorActionType.Remove, checkerComponent.boardIndex.Name);
+                    SetCurrentPlayStep(playStep);
+                }
+
                 boardComponent.CheckerCollection.Remove(checkerComponent.gameObject);
                 Destroy(checkerComponent.gameObject);
                 eatenChecker = default;
@@ -427,7 +446,7 @@ namespace Checkers.Managers
         /// <remark>Дополнительно удаляет выбранную шашку и ее возможные ходы.</remark>>
         private void ClearSelectionFromAllComponents()
         {
-            chosenChecker = default;
+            ChosenChecker = default;
             moveOptionsForChosenChecker.Clear();
 
             List<BaseClickComponent> baseClickComponents = new List<BaseClickComponent>();
@@ -463,33 +482,33 @@ namespace Checkers.Managers
         {
             newPositionOfSelectedChecker = Vector3.zero;
 
-            chosenChecker.boardIndex = targetIndex;
+            ChosenChecker.boardIndex = targetIndex;
 
             // Проверка условия победы  - если целевая шашка дамка или у оппонента занончились фигуры
             int opponentCheckersCount = 12;
-            switch (chosenChecker.colorComponent)
+            switch (ChosenChecker.colorComponent)
             {
                 case ColorType.White:
                     opponentCheckersCount = boardComponent.CheckersCountByColor(ColorType.Black);
-                    if (chosenChecker.boardIndex.Index.row == 0)
+                    if (ChosenChecker.boardIndex.Index.row == 0)
                     {
-                        chosenChecker.isLady = true;
+                        ChosenChecker.isLady = true;
                     }
                     break;
                 case ColorType.Black:
                     opponentCheckersCount = boardComponent.CheckersCountByColor(ColorType.White);
-                    if (chosenChecker.boardIndex.Index.row == 7)
+                    if (ChosenChecker.boardIndex.Index.row == 7)
                     {
-                        chosenChecker.isLady = true;
+                        ChosenChecker.isLady = true;
                     }
                     break;
                 default:
                     break;
             }
 
-            if (chosenChecker.isLady || opponentCheckersCount == 0)
+            if (ChosenChecker.isLady || opponentCheckersCount == 0)
             {
-                string side = chosenChecker.colorComponent == ColorType.White ? "Белые" : "Черные";
+                string side = ChosenChecker.colorComponent == ColorType.White ? "Белые" : "Черные";
 
                 print($"{side} победили!");
                 UnityEditor.EditorApplication.isPaused = true;
@@ -506,6 +525,13 @@ namespace Checkers.Managers
         private void SwitchPlayer()
         {
             currentPlayer = currentPlayer == 1 ? 2 : 1;
+        }
+
+        /// <summary>Назначает переданный игровой ход текущим.</summary>
+        /// <param name="playStep"></param>
+        private void SetCurrentPlayStep(PlayStep playStep)
+        {
+            CurrentPlayStep = playStep;
         }
 
         #endregion

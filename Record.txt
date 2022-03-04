@@ -1,0 +1,9 @@
+Player 1: checker G3 Select
+Player 1: checker G3 Move H4
+Player 2: checker H6 Select
+Player 2: checker H6 Move G5
+Player 1: checker E3 Select
+Player 1: checker E3 Move F4
+Player 2: checker G5 Select
+Player 2: checker G5 Move E3
+Player 2: Remove F4
