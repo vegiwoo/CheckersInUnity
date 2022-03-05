@@ -1,23 +1,19 @@
 using System;
+using System.Linq;
+using Checkers.Interfaces;
 
 namespace Checkers.Helpers
 {
-    [Serializable]
 	/// <summary>Игровой ход.</summary>
-	public struct PlayStep
+	public struct PlayStep : IPlayStepable
 	{
 		#region Variables and constants
 
-		/// <summary>Имя игрока.</summary>
-		public int PlayerNumber { get; private set; }
-		/// <summary>Имя актора (игрового объекта).</summary>
-		public string ActorName { get; private set; }
-		/// <summary>Начальное положение актора (игрового объекта).</summary>
-		public string ActorSource { get; private set; }
-		/// <summary>Тип активности актора (игрового объекта).</summary>
-		public ActorActionType ActorAction { get; private set; }
-		/// <summary>Конечное положение актора (игрового объекта).</summary>
-		public string ActorTarget { get; private set; }
+		public int PlayerNumber { get; set; }
+		public string ActorName { get; set; }
+		public string ActorSource { get; set; }
+		public ActorActionType ActorAction { get; set; }
+		public string ActorTarget { get; set; }
 
 		#endregion
 
@@ -85,14 +81,45 @@ namespace Checkers.Helpers
 			return resultString;
 		}
 
-		public PlayStep DesciptionToStep(string descr)
+		/// <summary>Преобразует описание игрового шага в игровой шаг.</summary>
+		/// <param name="description">Описание игрового шага.</param>
+		/// <returns>Игровой шаг.</returns>
+		public static IPlayStepable DesciptionToStep(string description)
 		{
-			// Player 2: checker F6 Select
-			// Player 1: checker C3 Move D4
-			// Player 1: Remove E5
+			PlayStep playStep = default;
 
-			// Dummy
-			return new PlayStep();
+			string[] subs01 = description.Split(':');
+
+			for (int i = 0; i < subs01.Count(); i++)
+			{
+				subs01[i].Trim();
+			}
+
+            int playerNumber = Convert.ToInt32(subs01[0].Trim().Split(' ')[1]);
+
+            string[] subs02 = subs01[1].Trim().Split(' ').Where(val => val != " ").ToArray();
+
+            for (int i = 0; i < subs02.Count(); i++)
+            {
+                subs02[i].Trim();
+            }
+
+            switch (subs02.Count())
+            {
+				case 2:     // Remove case
+					playStep = new PlayStep(playerNumber, ActorActionType.Remove, subs02[1]);
+					break;
+				case 3:     // Select case
+					playStep = new PlayStep(playerNumber, subs02[0], subs02[1], ActorActionType.Select);
+                    break;
+                case 4:     // Move case
+					playStep = new PlayStep(playerNumber, subs02[0], subs02[1], ActorActionType.Move, subs02[3]);
+					break;
+                default:
+                    break;
+            }
+
+            return playStep;
 		}
 
 		public override bool Equals(object obj)
@@ -111,6 +138,5 @@ namespace Checkers.Helpers
 		}
 
 		#endregion
-
 	}
 }

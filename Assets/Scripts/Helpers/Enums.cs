@@ -51,6 +51,10 @@ namespace Checkers.Helpers
             return list;
         }
 
+        /// <summary>Преобразует списое в стек.</summary>
+        /// <typeparam name="T">Тип элемента списка.</typeparam>
+        /// <param name="list">Список, указывающий на себя.</param>
+        /// <returns>Стек с элементами списка.</returns>
         public static Stack<T> ToStack<T>(this List<T> list)
         {
             Stack<T> stack = new Stack<T>(list.Count());

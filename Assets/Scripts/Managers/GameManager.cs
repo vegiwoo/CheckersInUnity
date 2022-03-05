@@ -19,7 +19,8 @@ namespace Checkers.Managers
         /// <summary>Текущий игрок.</summary>
         private int currentPlayer;
         /// <summary>Режим игровой партии.</summary>
-        [SerializeField] private CheckersPartyMode partyMode = CheckersPartyMode.Simple;
+        [SerializeField] private CheckersPartyMode partyMode;
+        private CheckersPartyMode PartyMode;
 
         /// <summary>Материал для выделения сущностей.</summary>
         private Material selectMaterial;
@@ -70,6 +71,13 @@ namespace Checkers.Managers
 
             cameraComponent = Camera.main.GetComponent<CameraComponent>();
             cameraComponent.CameraRotationComplete += CompletingBoardHandler;
+
+            partyMode = PartyMode = CheckersPartyMode.Simple;
+        }
+
+        private void Update()
+        {
+            CheckinPartyMode();
         }
 
         #endregion
@@ -532,6 +540,33 @@ namespace Checkers.Managers
         private void SetCurrentPlayStep(PlayStep playStep)
         {
             CurrentPlayStep = playStep;
+        }
+
+        /// <summary>Проверяет переключение типа режима работы с партией.</summary>
+        private void CheckinPartyMode()
+        {
+            if (PartyMode != partyMode)
+            {
+                PartyMode = partyMode;
+                switch (PartyMode)
+                {
+                    case CheckersPartyMode.Simple:
+                        break;
+                    case CheckersPartyMode.Record:
+                        foreach (var observer in observers)
+                        {
+                            observer.Record();
+                        }
+                        break;
+                    case CheckersPartyMode.Replay:
+                        foreach (var observer in observers)
+                        {
+                            Stack<IPlayStepable> stack = observer.Replay<IPlayStepable>();
+                            print(stack.Count());
+                        }
+                        break;
+                }
+            }
         }
 
         #endregion

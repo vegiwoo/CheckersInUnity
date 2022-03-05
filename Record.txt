@@ -7,3 +7,6 @@ Player 1: checker E3 Move F4
 Player 2: checker G5 Select
 Player 2: checker G5 Move E3
 Player 2: Remove F4
+Player 1: checker F2 Select
+Player 1: checker F2 Move D4
+Player 1: Remove E3
