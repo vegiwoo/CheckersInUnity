@@ -32,7 +32,6 @@ public class CameraComponent : MonoBehaviour
     private void Start()
     {
         Camera.main.transform.position = points[0];
-        //Camera.main.transform.eulerAngles = cameraRotation;
     }
 
     #endregion

@@ -51,6 +51,9 @@ namespace Checkers.Managers
             }
         }
 
+        /// <summary>Корутина реплея записи партии.</summary>
+        private Coroutine replayCoroutine;
+
         #endregion
 
         #region MonoBehaviour methods
@@ -215,6 +218,7 @@ namespace Checkers.Managers
                     SetSubscribeToCellEvents(false);
                     SetSubscribeToCheckerEvents(false);
 
+                    // Точка записи партии
                     if (partyMode == CheckersPartyMode.Record)
                     {
                         PlayStep movePlayStep = new PlayStep(currentPlayer, "checker", ChosenChecker.boardIndex.Name, ActorActionType.Move, targetCell.cell.boardIndex.Name);
@@ -234,6 +238,7 @@ namespace Checkers.Managers
         #endregion
 
         #region Coroutines
+
         /// <summary>Корутина перемещения шашки на новую позицию.</summary>
         /// <param name="duration">Продолжительность перемещения.</param>
         /// <param name="targetIndex">Новый BoardIndex для перемещаемой шашки.</param>
@@ -261,6 +266,107 @@ namespace Checkers.Managers
 
             CompletionAndTransferGameMove(targetIndex);
 
+            yield break;
+        }
+
+        /// <summary>Корутина реплея записанной партии.</summary>
+        /// <param name="plays">Стек записанных шагов и их описаний.</param>
+        /// <returns>IEnumerator как результат выполнения корутины.</returns>
+        private IEnumerator ReplayCoroutine(Stack<(IPlayStepable playStep, string desciption)> plays)
+        {
+            Stack<(IPlayStepable playStep, string desciption)> stack = plays;
+
+            // Блокировка ввода пользователя.
+            SetSubscribeToCellEvents(false);
+            SetSubscribeToCheckerEvents(false);
+
+            while (stack.Count() > 0)
+            {
+                var element = stack.Pop();
+                IPlayStepable currentPlayStep = element.playStep;
+
+                // Вывод в лог описания шага.
+                print(element.desciption);
+
+                // Назначение текущего игрока.
+                //currentPlayer = currentPlayStep.PlayerNumber;
+
+                // Получение компонента выделения из шага.
+                string boardIndexName = currentPlayStep.ActorSource;
+
+                switch (currentPlayStep.ActorAction)
+                {
+                    case ActorActionType.Select:
+                        if (boardIndexName != null)
+                        {
+                            // Запуск корутины выделения.
+                            yield return ReplaySelectCheckerCoroutine(1f, boardIndexName);
+                        }
+                        yield return null;
+                        break;
+                    case ActorActionType.Move:
+                        if (boardIndexName != null)
+                        {
+                            CellComponent sourceCell = boardComponent.GetCellByIndexName(currentPlayStep.ActorSource);
+                            CellComponent targetCell = boardComponent.GetCellByIndexName(currentPlayStep.ActorTarget);
+
+                            if (sourceCell != null && targetCell != null)
+                            {
+                                // Запуск корутины перемещения.
+                                yield return ReplayMovingCheckerCoroutine(1f, sourceCell, targetCell);
+                            }
+                        }
+                        yield return null;
+                        break;
+                    case ActorActionType.Remove:
+                        // Здесь не вызывается ничего, так как удаление шашки производится на шаге Move.
+                        break;
+                }
+            }
+
+            // Разблокировка ввода пользователя.
+            SetSubscribeToCellEvents(true);
+            SetSubscribeToCheckerEvents(true);
+
+            replayCoroutine = null;
+            yield break;
+        }
+
+        /// <summary>Корутина для выделения ячейки при реплее партии.</summary>
+        /// <param name="duration">Задержка реплея.</param>
+        /// <param name="boardIndexName">Имя BorderIndex для поиска шашки.</param>
+        /// <returns>IEnumerator как результат выполнения корутины.</returns>
+        private IEnumerator ReplaySelectCheckerCoroutine(float duration, string boardIndexName)
+        {
+            yield return new WaitForSeconds(duration);
+
+            CheckerComponent selectChecker = boardComponent.GetCheckerByIndexName(boardIndexName);
+
+            if (selectChecker != null)
+                OnClickBaseClickComponentHandler(selectChecker);
+            else
+                Debug.LogError("Element at given index not found");
+
+            //replaySelectCheckerCoroutine = null;
+            yield break;
+        }
+
+        /// <summary>Корутина для перемещения шашки при реплее партии.</summary>
+        /// <param name="duration">Задержка реплея.</param>
+        /// <param name="sourceCell">CellComponent для выделения шашки.</param>
+        /// <param name="targetCell">CellComponent для перемещения шашки.</param>
+        /// <returns>IEnumerator как результат выполнения корутины.</returns>
+        private IEnumerator ReplayMovingCheckerCoroutine(float duration, CellComponent sourceCell, CellComponent targetCell)
+        {
+            yield return new WaitForSeconds(duration);
+
+            // Клик по шашке
+            yield return ReplaySelectCheckerCoroutine(duration, sourceCell.boardIndex.Name);
+
+            // Клик по целевой ячейке
+            OnClickBaseClickComponentHandler(targetCell);
+
+            //replayMovingCheckerCoroutine = null;
             yield break;
         }
 
@@ -559,22 +665,24 @@ namespace Checkers.Managers
                         }
                         break;
                     case CheckersPartyMode.Replay:
-                        foreach (var observer in observers)
+                        if (observers[0] != null)
                         {
-                            Stack<IPlayStepable> stack = observer.Replay<IPlayStepable>();
-                            print(stack.Count());
+                            Stack<(IPlayStepable playStep, string desciption)> stack = observers[0].Replay<IPlayStepable>();
+                            if (stack.Count() > 0) ReplayProcedure(stack);
                         }
                         break;
                 }
             }
         }
 
+        /// <summary>Процедура реплея записи партии из обозревателя.
+        /// </summary>
+        /// <param name="plays">Стек с игровыми ходами и их описаниями.</param>
+        private void ReplayProcedure(Stack<(IPlayStepable playStep, string desciption)> plays)
+        {
+            replayCoroutine = StartCoroutine(ReplayCoroutine(plays));
+        }
+
         #endregion
     }
 }
-
-// Новый компонент:
-// 
-// - воспроиводит записанную партию по выбору в редакторе, пользовательский ввод выклчается, задержка между ходами, лог кажого хода
-// - в редакторе выбиратся флажок записи игры / флажок для воспроизведения записанной игры 
-// - запись после каждого хода

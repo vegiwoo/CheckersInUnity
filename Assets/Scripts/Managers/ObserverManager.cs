@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Checkers.Managers
 {
-    ///<summary>Класс Записывает и вопроизводит ходы игроков.</summary>
+    ///<summary>Записывает и воспроизводит ходы игроков.</summary>
     public class ObserverManager : IObserver
     {
         #region Variables and constants
@@ -29,8 +29,6 @@ namespace Checkers.Managers
         #endregion
 
         #region Methods
-
-        #endregion
 
         /// <summary>Проверяет существование файла записи.</summary>
         /// <returns>Флаг проверки.</returns>
@@ -58,9 +56,9 @@ namespace Checkers.Managers
             recordFilePath = CheckRecordFile();
         }
 
-        public Stack<IPlayStepable> Replay<IPlayStepable>()
+        public Stack<(IPlayStepable playSter, string description)> Replay<IPlayStepable>()
         {
-            Stack<IPlayStepable> stack = new Stack<IPlayStepable>();
+            List<(IPlayStepable playSter, string description)> list = new List<(IPlayStepable playSter, string description)>();
 
             if (RecordFileExists())
             {
@@ -69,13 +67,14 @@ namespace Checkers.Managers
                     string? line;
                     while ((line = reader.ReadLine()) != null)
                     {
-                        IPlayStepable play = (IPlayStepable)PlayStep.DesciptionToStep(line);
-                        stack.Push(play);
+                        IPlayStepable playStep = (IPlayStepable)PlayStep.DesciptionToStep(line);
+                        list.Add((playStep, line));
                     }
                 }
             }
 
-            return stack;
+            list.Reverse();
+            return list.ToStack();
         }
 
         /// <summary>Метод обновления логики обозревателя.</summary>
@@ -112,10 +111,7 @@ namespace Checkers.Managers
                 }
             }
         }
+
+        #endregion
     }
 }
-
-
-// Player 1: select checker A1
-// Player 1: move checker A1 A3
-// Player 2: remove checker A2

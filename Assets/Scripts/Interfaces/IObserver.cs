@@ -10,10 +10,10 @@ namespace Checkers.Interfaces
 		/// <summary>Получает команду на сброс прошлого обозрения и запись нового.</summary>
 		void Record();
 
-		/// <summary>Получает задачу на реплей обозрения.</summary>
+		/// <summary>Получает стек задач и их описаний на реплей обозрения.</summary>
 		/// <typeparam name="IPlayStepable">Тип для парсинга данных.</typeparam>
-		/// <returns>Стек с этапами обозрения.</returns>
-		Stack<IPlayStepable> Replay<IPlayStepable>();
+		/// <returns>Стек с этапами обозрения и их описанием.</returns>
+		Stack<(IPlayStepable playSter, string description)> Replay<IPlayStepable>();
 
 		/// <summary>Получает обновление от издателя.</summary>
 		/// <param name="playStep">Игровой ход.</param>

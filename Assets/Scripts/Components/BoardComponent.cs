@@ -325,6 +325,32 @@ namespace Checkers
                 .Where(ch => ch.colorComponent == colorType)
                 .Count();
         }
+
+        /// <summary>Находит CheckerComponent шашки по имени BoardIndex.</summary>
+        /// <param name="boardIndexName">Имя BoardIndex компонента.</param>
+        /// <returns>Найденный CheckerComponent для шашки.</returns>
+        public CheckerComponent GetCheckerByIndexName(string boardIndexName)
+        {
+           return CheckerCollection
+                .Select(go => go.GetComponent<CheckerComponent>())
+                .Where(bi => bi.boardIndex.Name == boardIndexName)
+                .FirstOrDefault();
+        }
+
+        /// <summary>Находит CellComponent ячейки по имени BoardIndex.</summary>
+        /// <param name="boardIndexName">Имя BoardIndex компонента.</param>
+        /// <returns>Найденный CellComponent для ячейки.</returns>
+        public CellComponent GetCellByIndexName(string boardIndexName)
+        {
+            return (
+                from i in Enumerable.Range(0, CellCollection.GetLength(0))
+                from j in Enumerable.Range(0, CellCollection.GetLength(1))
+                where CellCollection[i, j].GetComponent<CellComponent>().name == boardIndexName
+                select CellCollection[i, j].GetComponent<CellComponent>()
+             )
+             .FirstOrDefault();
+        }
+
         #endregion
     }
 

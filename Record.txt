@@ -1,12 +1,38 @@
 Player 1: checker G3 Select
 Player 1: checker G3 Move H4
-Player 2: checker H6 Select
-Player 2: checker H6 Move G5
-Player 1: checker E3 Select
-Player 1: checker E3 Move F4
-Player 2: checker G5 Select
-Player 2: checker G5 Move E3
+Player 2: checker D6 Select
+Player 2: checker D6 Move C5
+Player 1: checker C3 Select
+Player 1: checker C3 Move D4
+Player 2: checker C5 Select
+Player 2: checker C5 Move B4
+Player 1: checker D4 Select
+Player 1: checker D2 Select
+Player 1: checker D2 Move C3
+Player 2: checker F6 Select
+Player 2: checker F6 Move E5
+Player 1: checker H2 Select
+Player 1: checker H2 Move G3
+Player 2: checker C7 Select
+Player 2: checker C7 Move D6
+Player 1: checker C3 Select
+Player 1: checker C3 Move A5
+Player 1: Remove B4
+Player 2: checker E7 Select
+Player 2: checker E7 Move F6
+Player 1: checker A5 Select
+Player 1: checker A5 Move C7
+Player 1: Remove B6
+Player 2: checker D8 Select
+Player 2: checker D8 Move B6
+Player 2: Remove C7
+Player 1: checker G3 Select
+Player 1: checker G3 Move F4
+Player 2: checker E5 Select
+Player 2: checker E5 Move G3
 Player 2: Remove F4
-Player 1: checker F2 Select
-Player 1: checker F2 Move D4
-Player 1: Remove E3
+Player 1: checker E1 Select
+Player 1: checker E1 Move D2
+Player 2: checker G3 Select
+Player 2: checker G3 Move E1
+Player 2: Remove F2
